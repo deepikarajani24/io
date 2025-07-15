@@ -1112,6 +1112,7 @@ void RenameFile(const TF_Filesystem* filesystem, const char* src,
 void DeleteRecursively(const TF_Filesystem* filesystem, const char* path,
                        uint64_t* undeleted_files, uint64_t* undeleted_dirs,
                        TF_Status* status) {
+  TF_VLog(1, "GCSFS DeleteRecursively: Starting for path %s", path);
   if (!undeleted_files || !undeleted_dirs)
     return TF_SetStatus(
         status, TF_INTERNAL,
@@ -1120,6 +1121,8 @@ void DeleteRecursively(const TF_Filesystem* filesystem, const char* path,
   *undeleted_dirs = 0;
   if (!IsDirectory(filesystem, path, status)) {
     *undeleted_dirs = 1;
+    TF_VLog(1, "GCSFS DeleteRecursively: Path %s is not a directory. Aborting.", path);
+
     return;
   }
   auto gcs_file =
@@ -1135,6 +1138,8 @@ void DeleteRecursively(const TF_Filesystem* filesystem, const char* path,
   MaybeAppendSlash(&dir);
   for (const std::string& children : childrens) {
     const std::string& full_path = dir + children;
+    TF_VLog(2, "GCSFS DeleteRecursively: Attempting to delete object %s", full_path.c_str());
+
     DeleteFile(filesystem, full_path.c_str(), status);
     if (TF_GetCode(status) != TF_OK) {
       if (IsDirectory(filesystem, full_path.c_str(), status))
@@ -1144,6 +1149,8 @@ void DeleteRecursively(const TF_Filesystem* filesystem, const char* path,
         (*undeleted_files)++;
     }
   }
+  TF_VLog(1, "GCSFS DeleteRecursively: Finished for path %s. Undeleted files: %llu, Undeleted dirs: %llu",
+         path, *undeleted_files, *undeleted_dirs);
 }
 
 int GetChildren(const TF_Filesystem* filesystem, const char* path,
